@@ -1,0 +1,60 @@
+server:
+  port: 8888
+
+spring:
+  application:
+    name: SERVICE-GATEWAY
+  cloud:
+    consul:
+      host: ${SPRING_CLOUD_CONSUL_HOST:localhost}
+      port: ${SPRING_CLOUD_CONSUL_PORT:8500}
+      discovery:
+        enabled: ${SPRING_CLOUD_CONSUL_DISCOVERY_ENABLED:true}
+        instance-id: ${spring.application.name}:${server.port}
+        service-name: ${spring.application.name}
+        health-check-path: /actuator/health
+        health-check-interval: 10s
+        health-check-timeout: 4s
+        prefer-ip-address: true
+        tags:
+          - team=fleetops
+          - tier=edge
+    gateway:
+      discovery:
+        locator:
+          # /SERVICE-CLIENT/clients -> lb://SERVICE-CLIENT/clients
+          enabled: true
+          lower-case-service-id: false
+      httpclient:
+        connect-timeout: 3000
+        response-timeout: 10s
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowed-origins: "*"
+            allowed-methods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowed-headers: "*"
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway,circuitbreakers
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+    gateway:
+      enabled: true
+
+info:
+  app:
+    name: SERVICE-GATEWAY
+    discovery: consul
+    tp: "TP 25 - Conteneurisation Docker + Consul"

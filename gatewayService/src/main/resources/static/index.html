@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>FleetOps Console - Docker + Consul</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg"/>
+    <link rel="stylesheet" href="/console.css"/>
+</head>
+<body>
+<header class="topbar">
+    <div class="brand">
+        <span class="logo">FO</span>
+        <div>
+            <h1>FleetOps Console</h1>
+            <p>Supervision du parc &middot; TP 25 Docker + Consul</p>
+        </div>
+    </div>
+    <div class="topbar-actions">
+        <a class="pill-link" href="http://localhost:8500/ui/dc1/services" target="_blank" rel="noopener">Ouvrir Consul UI</a>
+        <span id="correlation" class="badge badge-muted">cid &mdash;</span>
+        <button id="refresh" type="button">Actualiser</button>
+    </div>
+</header>
+
+<main>
+    <section class="kpis" id="kpis"></section>
+
+    <section class="panel">
+        <h2>Registre Consul <span class="hint">(instances resolues dans le reseau Docker)</span></h2>
+        <div id="registry" class="pill-row"></div>
+    </section>
+
+    <section class="grid">
+        <div class="panel">
+            <h2>Clients</h2>
+            <table id="clients">
+                <thead><tr><th>#</th><th>Nom</th><th>Age</th><th>Email</th><th>Adhesion</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+        <div class="panel">
+            <h2>Parc automobile</h2>
+            <table id="voitures">
+                <thead><tr><th>#</th><th>Marque</th><th>Modele</th><th>Matricule</th><th>Km</th><th>Client</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="grid">
+        <div class="panel">
+            <h2>Repartition par marque</h2>
+            <div id="marques" class="bars"></div>
+        </div>
+        <div class="panel">
+            <h2>Repartition par carburant</h2>
+            <div id="carburants" class="bars"></div>
+        </div>
+    </section>
+
+    <section class="panel">
+        <h2>Architecture conteneurisee</h2>
+        <ul class="routes">
+            <li><code>mysql-container1</code> &rarr; 2 bases : <code>Micro_ClientDB</code>, <code>Micro_VoitureDB</code></li>
+            <li><code>consul-container</code> &rarr; registre de decouverte (port 8500)</li>
+            <li><code>gateway-service</code> &rarr; <code>lb://SERVICE-CLIENT</code>, <code>lb://SERVICE-VOITURE</code></li>
+            <li><code>client-service</code> &rarr; CRUD clients, JDBC vers <code>mysql:3306</code></li>
+            <li><code>voiture-service</code> &rarr; OpenFeign vers <code>SERVICE-CLIENT</code> via Consul</li>
+            <li><code>phpmyadmin-container</code> &rarr; administration MySQL</li>
+        </ul>
+    </section>
+</main>
+
+<footer>
+    <span>Docker Compose &middot; Consul 8500 &middot; MySQL 3306 &middot; Client 8088 / Voiture 8089 / Gateway 8888</span>
+</footer>
+<script src="/console.js"></script>
+</body>
+</html>

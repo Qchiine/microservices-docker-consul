@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>FleetOps API Explorer - TP 25</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg"/>
+    <link rel="stylesheet" href="/console.css"/>
+    <style>
+        .layout { display: grid; grid-template-columns: 340px 1fr; gap: 20px; }
+        @media (max-width: 980px) { .layout { grid-template-columns: 1fr; } }
+        .endpoint { display: block; width: 100%; text-align: left; border: 1px solid var(--line);
+                    background: var(--panel-2); color: var(--ink); border-radius: 10px;
+                    padding: 10px 12px; margin-bottom: 8px; font-size: 12px; cursor: pointer; }
+        .endpoint:hover { border-color: var(--accent); color: var(--accent); }
+        .endpoint.active { border-color: var(--accent); background: rgba(56, 189, 248, 0.12); }
+        .endpoint .m { color: var(--accent); font-weight: 700; margin-right: 8px; }
+        .endpoint .u { font-family: "Cascadia Code", Consolas, monospace; }
+        .endpoint .g { display: block; color: var(--muted); margin-top: 4px; font-size: 11px; }
+        .meta { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+        pre { margin: 0; background: #0b1220; border: 1px solid var(--line); border-radius: 12px;
+              padding: 18px; overflow: auto; max-height: 620px; font-size: 12.5px; line-height: 1.6;
+              font-family: "Cascadia Code", Consolas, monospace; color: #cfe3ff; }
+        .status-ok { color: var(--ok); }
+        .status-ko { color: var(--warn); }
+    </style>
+</head>
+<body>
+<header class="topbar">
+    <div class="brand">
+        <span class="logo">FO</span>
+        <div>
+            <h1>FleetOps API Explorer</h1>
+            <p>Endpoints verifies via la Gateway conteneurisee (Consul)</p>
+        </div>
+    </div>
+    <div class="topbar-actions">
+        <a href="/" style="color:var(--accent);font-size:13px;text-decoration:none">&larr; Console</a>
+        <span id="correlation" class="badge badge-muted">cid &mdash;</span>
+    </div>
+</header>
+
+<main>
+    <div class="layout">
+        <div class="panel">
+            <h2>Endpoints</h2>
+            <div id="liste"></div>
+        </div>
+        <div class="panel">
+            <h2>Reponse <span class="hint" id="titre">choisissez un endpoint</span></h2>
+            <div class="meta" id="meta"></div>
+            <pre id="sortie">// En attente...</pre>
+        </div>
+    </div>
+</main>
+
+<footer>
+    <span>Gateway 8888 &rarr; Eureka 8761 &rarr; SERVICE-CLIENT 8088 / SERVICE-VOITURE 8089</span>
+</footer>
+<script src="/explorer.js"></script>
+</body>
+</html>

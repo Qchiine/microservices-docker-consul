@@ -1,0 +1,172 @@
+# =====================================================================
+# TP 25 - Conteneurisation des microservices + decouverte via Consul
+# Pile : MySQL + Consul + Gateway + Client + Voiture + phpMyAdmin
+#
+#   docker compose up -d --build
+#   docker compose ps
+#   docker compose logs -f gateway-service
+#
+# Points cles :
+#   * "mysql" et "consul" sont les noms DNS des conteneurs (PAS localhost)
+#   * chaque service attend que ses dependances soient "healthy"
+#   * le reseau "microservices-network" porte la resolution de noms
+# =====================================================================
+
+services:
+  # ------------------------------------------------------------------ MySQL
+  mysql:
+    image: mysql:8.0
+    container_name: mysql-container1
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: Micro_ClientDB
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./docker/mysql-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    networks:
+      - microservices-network
+
+  # ----------------------------------------------------------------- Consul
+  consul:
+    image: consul:1.15.4
+    container_name: consul-container
+    restart: unless-stopped
+    command: agent -dev -client=0.0.0.0 -ui -log-level=info
+    ports:
+      - "${CONSUL_PORT:-8500}:8500"
+      - "${CONSUL_DNS_PORT:-8600}:8600/udp"
+    healthcheck:
+      test: ["CMD", "consul", "members"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
+    networks:
+      - microservices-network
+
+  # ---------------------------------------------------------------- Gateway
+  gateway-service:
+    build:
+      context: ./gatewayService
+      dockerfile: Dockerfile
+    image: fleetops/gateway-service:1.0
+    container_name: gateway-service
+    restart: unless-stopped
+    ports:
+      - "${GATEWAY_PORT:-8888}:8888"
+    depends_on:
+      consul:
+        condition: service_healthy
+    networks:
+      - microservices-network
+    environment:
+      SPRING_CLOUD_CONSUL_HOST: consul
+      SPRING_CLOUD_CONSUL_PORT: "8500"
+      SPRING_CLOUD_CONSUL_DISCOVERY_ENABLED: "true"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8888/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 60s
+
+  # ----------------------------------------------------------------- Client
+  client-service:
+    build:
+      context: ./clientService
+      dockerfile: Dockerfile
+    image: fleetops/client-service:1.0
+    container_name: client-service
+    restart: unless-stopped
+    ports:
+      - "${CLIENT_PORT:-8088}:8088"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      consul:
+        condition: service_healthy
+    networks:
+      - microservices-network
+    environment:
+      SPRING_CLOUD_CONSUL_HOST: consul
+      SPRING_CLOUD_CONSUL_PORT: "8500"
+      SPRING_CLOUD_CONSUL_DISCOVERY_ENABLED: "true"
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/Micro_ClientDB?createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true&useSSL=false
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8088/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 90s
+
+  # ---------------------------------------------------------------- Voiture
+  voiture-service:
+    build:
+      context: ./voitureService
+      dockerfile: Dockerfile
+    image: fleetops/voiture-service:1.0
+    container_name: voiture-service
+    restart: unless-stopped
+    ports:
+      - "${VOITURE_PORT:-8089}:8089"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      consul:
+        condition: service_healthy
+      client-service:
+        condition: service_started
+    networks:
+      - microservices-network
+    environment:
+      SPRING_CLOUD_CONSUL_HOST: consul
+      SPRING_CLOUD_CONSUL_PORT: "8500"
+      SPRING_CLOUD_CONSUL_DISCOVERY_ENABLED: "true"
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/Micro_VoitureDB?createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true&useSSL=false
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8089/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 90s
+
+  # ------------------------------------------------------------- phpMyAdmin
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    container_name: phpmyadmin-container
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      MYSQL_ROOT_PASSWORD: root
+      UPLOAD_LIMIT: 64M
+    ports:
+      - "${PHPMYADMIN_PORT:-8081}:80"
+    networks:
+      - microservices-network
+
+volumes:
+  mysql-data:
+
+networks:
+  microservices-network:
+    driver: bridge

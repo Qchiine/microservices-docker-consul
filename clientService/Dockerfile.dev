@@ -1,0 +1,6 @@
+# Variante developpement : le code est monte en volume, Maven relance l'app.
+FROM maven:3.8.4-openjdk-17
+WORKDIR /app
+EXPOSE 8088
+ENV JAVA_OPTS="-XX:MaxRAMPercentage=75"
+CMD ["sh", "-c", "mvn -q spring-boot:run -Dspring-boot.run.jvmArguments=$JAVA_OPTS"]

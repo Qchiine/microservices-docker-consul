@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>FleetOps Diagnostic - Docker + Consul</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg"/>
+    <link rel="stylesheet" href="/console.css"/>
+    <style>
+        .layout { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media (max-width: 1000px) { .layout { grid-template-columns: 1fr; } }
+        .kv { display: grid; grid-template-columns: 170px 1fr; gap: 8px 14px; font-size: 13px; }
+        .kv dt { color: var(--muted); }
+        .kv dd { margin: 0; font-family: "Cascadia Code", Consolas, monospace; font-size: 12px; }
+        .ok { color: var(--ok); }
+        .ko { color: var(--warn); }
+        ul.checks { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.9; }
+    </style>
+</head>
+<body>
+<header class="topbar">
+    <div class="brand">
+        <span class="logo">FO</span>
+        <div>
+            <h1>Diagnostic de la pile Docker</h1>
+            <p>Controles automatises du TP 25</p>
+        </div>
+    </div>
+    <div class="topbar-actions">
+        <a class="pill-link" href="/">Console</a>
+        <button id="refresh" type="button">Relancer</button>
+    </div>
+</header>
+
+<main>
+    <section class="kpis" id="kpis"></section>
+
+    <div class="layout">
+        <section class="panel">
+            <h2>Conteneur courant</h2>
+            <dl class="kv" id="container"></dl>
+        </section>
+        <section class="panel">
+            <h2>Controles</h2>
+            <ul class="checks" id="checks"></ul>
+        </section>
+    </div>
+
+    <section class="panel">
+        <h2>Instances Consul <span class="hint">(resolution DNS interne du reseau Docker)</span></h2>
+        <table id="instances">
+            <thead><tr><th>Service</th><th>Instance</th><th>Hote</th><th>Port</th><th>URI</th></tr></thead>
+            <tbody></tbody>
+        </table>
+    </section>
+</main>
+
+<footer><span>docker compose &middot; consul:8500 &middot; mysql:3306</span></footer>
+<script>
+async function rafraichir() {
+    const [conteneur, pile] = await Promise.all([
+        fetch('/api/diagnostic/container').then(r => r.json()),
+        fetch('/api/diagnostic/stack').then(r => r.json())
+    ]);
+
+    document.getElementById('container').innerHTML = Object.entries(conteneur)
+        .map(([k, v]) => '<dt>' + k + '</dt><dd>' + v + '</dd>').join('');
+
+    const cartes = [
+        { label: 'Services dans Consul', value: pile.serviceCount, unite: 'registre' },
+        { label: 'Instances', value: pile.instanceCount, unite: 'actives' },
+        { label: 'Problemes detectes', value: (pile.problems || []).length, unite: 'attendu : 0' },
+        { label: 'Pret pour Docker', value: pile.dockerReady ? 'OUI' : 'NON', unite: 'tomcat/netty' }
+    ];
+    document.getElementById('kpis').innerHTML = cartes.map(c =>
+        '<div class="kpi"><div class="label">' + c.label + '</div><div class="value">' +
+        c.value + ' <small>' + c.unite + '</small></div></div>').join('');
+
+    const controles = [
+        ['Consul joignable', (pile.serviceCount || 0) > 0],
+        ['SERVICE-CLIENT enregistre', (pile.services || []).includes('SERVICE-CLIENT')],
+        ['SERVICE-VOITURE enregistre', (pile.services || []).includes('SERVICE-VOITURE')],
+        ['SERVICE-GATEWAY enregistre', (pile.services || []).includes('SERVICE-GATEWAY')],
+        ['Aucune adresse localhost enregistree', (pile.problems || []).length === 0]
+    ];
+    document.getElementById('checks').innerHTML = controles.map(([libelle, ok]) =>
+        '<li class="' + (ok ? 'ok' : 'ko') + '">' + (ok ? 'OK' : 'KO') + ' &mdash; ' + libelle + '</li>').join('');
+
+    document.querySelector('#instances tbody').innerHTML = (pile.instances || []).map(i =>
+        '<tr><td>' + i.service + '</td><td>' + i.instanceId + '</td><td>' + i.host + '</td><td>' +
+        i.port + '</td><td>' + i.uri + '</td></tr>').join('') ||
+        '<tr><td colspan="5">Aucune instance</td></tr>';
+}
+
+document.getElementById('refresh').addEventListener('click', rafraichir);
+rafraichir();
+</script>
+</body>
+</html>
